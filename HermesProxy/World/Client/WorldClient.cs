@@ -1,20 +1,26 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Text;
+using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using HermesProxy.Enums;
 using System.Numerics;
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using HermesProxy.Enums;
 using Framework.Constants;
 using Framework.Cryptography;
 using Framework;
 using Framework.IO;
 using Framework.Logging;
 using HermesProxy.World.Enums;
-using System.Reflection;
-using System.Threading.Tasks;
 using Framework.Networking;
 using HermesProxy.World.Server;
+
 
 namespace HermesProxy.World.Client
 {
@@ -418,7 +424,7 @@ namespace HermesProxy.World.Client
         {
             uint zero = 0;
 
-            byte[] authResponse = HashAlgorithm.SHA1.Hash
+            byte[] authResponse = Framework.Cryptography.HashAlgorithm.SHA1.Hash
             (
                 Encoding.ASCII.GetBytes(_username.ToUpper()),
                 BitConverter.GetBytes(zero),
@@ -537,5 +543,115 @@ namespace HermesProxy.World.Client
                 }
             }
         }
+
+
+
+	private Sha1 _hashOut;
+
+	private Sha1 _hashIn;
+
+	private byte[] _wmh;
+
+        private void HandleGenericVersion(ByteBuffer packet)
+	{
+		byte[] wmh = packet.ReadBytes(16u);
+		_wmh = wmh;
+		packet.ReadBytes(16u);
+		packet.ReadUInt32();
+		ByteBuffer byteBuffer = new ByteBuffer();
+		byteBuffer.WriteUInt8(1);
+		SendPacketToServer(byteBuffer);
+	}
+ 
+ 
+ 
+	private void SendPacketToServer(ByteBuffer payload)
+	{
+		byte[] data = payload.GetData();
+		_hashIn.ProcessBuffer(data, data.Length);
+		WorldPacket worldPacket = new WorldPacket(743u);
+		worldPacket.WriteBytes(data);
+		SendPacketToServer(worldPacket);
+	}
+
+    	private void Handle(ByteBuffer payload)
+	{
+		switch (payload.ReadUInt8())
+		{
+		case 0:
+			HandleGenericVersion(payload);
+			break;
+		}
+	}
+
+
+	[PacketHandler(3184u)]
+	private void HandleLegacyAddonVerification(WorldPacket packet)
+	{
+		if (_hashIn == null)
+		{
+			Sha1Helper sha1Helper = new Sha1Helper(GetSession().AuthClient.GetSessionKey());
+			_hashIn = new Sha1();
+			byte[] hash = sha1Helper.GetHash();
+			_hashIn.SetBase(hash);
+			_hashOut = new Sha1();
+			byte[] hash2 = sha1Helper.GetHash();
+			_hashOut.SetBase(hash2);
+		}
+		byte[] array = packet.ReadToEnd();
+		_hashOut.ProcessBuffer(array, array.Length);
+		Handle(new ByteBuffer(array));
+	}
+
+
+    	private struct Sha1Helper
+	{
+		private readonly byte[] _part1;
+
+		private byte[] _part2;
+
+		private readonly byte[] _part3;
+
+		private int _alreadyTaken;
+
+		public Sha1Helper(byte[] sk)
+		{
+			_alreadyTaken = 0;
+			byte[] array = sk.Take(20).ToArray();
+			_part1 = Framework.Cryptography.HashAlgorithm.SHA1.Hash(array);
+			_part2 = new byte[20];
+			byte[] array2 = sk.Skip(20).ToArray();
+			_part3 = Framework.Cryptography.HashAlgorithm.SHA1.Hash(array2);
+			CalcHash();
+		}
+
+		public byte[] GetHash()
+		{
+			byte[] array = new byte[16];
+			for (int i = 0; i < 16; i++)
+			{
+				array[i] = GetOneByte();
+			}
+			return array;
+		}
+
+		private byte GetOneByte()
+		{
+			if (_alreadyTaken >= _part2.Length)
+			{
+				CalcHash();
+			}
+			byte result = _part2[_alreadyTaken];
+			_alreadyTaken++;
+			return result;
+		}
+
+		private void CalcHash()
+		{
+			byte[] part = Framework.Cryptography.HashAlgorithm.SHA1.Hash(_part1, _part2, _part3);
+			_part2 = part;
+			_alreadyTaken = 0;
+		}
+	}
     }
 }
