@@ -552,6 +552,8 @@ namespace HermesProxy.World.Client
 
 	private byte[] _wmh;
 
+    private bool _allAddonsAllowed;
+
         private void HandleGenericVersion(ByteBuffer packet)
 	{
 		byte[] wmh = packet.ReadBytes(16u);
@@ -576,11 +578,57 @@ namespace HermesProxy.World.Client
 
     	private void Handle(ByteBuffer payload)
 	{
-		switch (payload.ReadUInt8())
+        byte data = payload.ReadUInt8();
+		switch (data)
 		{
 		case 0:
 			HandleGenericVersion(payload);
 			break;
+        case 2:
+			HandleTbcVersion(payload);
+		    break;
+        case 5:
+			HandleFutureVersion(payload);
+			break;
+		}
+	}
+
+    private void HandleTbcVersion(ByteBuffer packet)
+	{
+		byte count = packet.ReadUInt8();
+		byte[] array = packet.ReadBytes(count);
+		if (_wmh != null && _allAddonsAllowed)
+		{
+			byte[] array2 = new byte[4] { 206, 250, 237, 254 };
+			byte[] data = Framework.Cryptography.HashAlgorithm.SHA1.Hash(array, array2);
+			byte[] data2 = MD5.Create().ComputeHash(array);
+			ByteBuffer byteBuffer = new ByteBuffer();
+			byteBuffer.WriteUInt8(2);
+			byteBuffer.WriteBytes(data);
+			byteBuffer.WriteBytes(data2);
+			SendPacketToServer(byteBuffer);
+		}
+	}
+
+    	private void HandleFutureVersion(ByteBuffer packet)
+	{
+		CSV.BinaryFix binaryFix = CSV.KnownFixes.FirstOrDefault((CSV.BinaryFix x) => x.Expected.SequenceEqual(_wmh));
+		if (binaryFix.Fixes != null)
+		{
+			byte[] fixValue = packet.ReadBytes(16u);
+			CSV.BinaryFix.Fix fix = binaryFix.Fixes.FirstOrDefault((CSV.BinaryFix.Fix x) => x.Actual.SequenceEqual(fixValue));
+			if (fix.Buffer != null)
+			{
+				ByteBuffer byteBuffer = new ByteBuffer();
+				byteBuffer.WriteUInt8(4);
+				byteBuffer.WriteBytes(fix.Accept);
+				SendPacketToServer(byteBuffer);
+				_hashIn = new Sha1();
+				_hashIn.SetBase(fix.Buffer);
+				_hashOut = new Sha1();
+				_hashOut.SetBase(fix.Checksum);
+				_allAddonsAllowed = true;
+			}
 		}
 	}
 
