@@ -309,6 +309,7 @@ namespace HermesProxy.World.Client
             {
                 var guid = packet.ReadPackedGuid().To128(GetSession().GameState);
                 PrintString($"Guid = {objCount}", index, j);
+                if (guid == GetSession().GameState.CurrentPlayerGuid) continue;
                 GetSession().GameState.ObjectCacheMutex.WaitOne();
                 GetSession().GameState.ObjectCacheLegacy.Remove(guid);
                 GetSession().GameState.ObjectCacheModern.Remove(guid);

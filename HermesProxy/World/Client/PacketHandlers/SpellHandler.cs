@@ -4,6 +4,7 @@ using HermesProxy.World.Enums;
 using HermesProxy.World.Server.Packets;
 using System;
 using System.Threading;
+using Framework.Logging;
 
 namespace HermesProxy.World.Client
 {
@@ -333,7 +334,17 @@ namespace HermesProxy.World.Client
             spell2.SpellID = spellId;
             spell2.SpellXSpellVisualID = spellVisual;
             spell2.Reason = reason;
+
             SendPacketToClient(spell2);
+
+            string? casterUnitGUID = casterUnit.ToUnitGUID();
+            if (casterUnitGUID != null)
+            {
+                uint language = (uint)Language.AddonBfA;
+                WowGuid128 playerGuid = GetSession().GameState.CurrentPlayerGuid;
+                ChatPkt chat = new ChatPkt(GetSession(), ChatMessageTypeModern.Addon, $"SMSG_SPELL_FAILED_OTHER:{casterUnitGUID},{spellId}", language, playerGuid, "", playerGuid, "", "", ChatFlags.None, "HermesProxySMSG");
+                SendPacketToClient(chat);
+            }
         }
 
         [PacketHandler(Opcode.SMSG_SPELL_START)]
@@ -419,6 +430,8 @@ namespace HermesProxy.World.Client
                 GetSession().GameState.CurrentClientSpecialCast != null &&
                 GetSession().GameState.CurrentClientSpecialCast.SpellId == spell.Cast.SpellID)
             {
+               
+                Log.Print(LogType.Warn, $"SPELL_GO {spell.Cast.SpellID}");
                 spell.Cast.CastID = GetSession().GameState.CurrentClientSpecialCast.ServerGUID;
                 spell.Cast.SpellXSpellVisualID = GetSession().GameState.CurrentClientSpecialCast.SpellXSpellVisualId;
 
@@ -433,8 +446,18 @@ namespace HermesProxy.World.Client
             }
             if (!spell.Cast.CasterUnit.IsEmpty() && GameData.AuraSpells.Contains((uint)spell.Cast.SpellID))
             {
-                foreach (WowGuid128 target in spell.Cast.HitTargets)
+                string? casterUnitGUID = spell.Cast.CasterUnit.ToUnitGUID();
+                foreach (WowGuid128 target in spell.Cast.HitTargets){
                     GetSession().GameState.StoreLastAuraCasterOnTarget(target, (uint)spell.Cast.SpellID, spell.Cast.CasterUnit);
+                    string? targetUnitGUID = target.ToUnitGUID();
+                    if (casterUnitGUID != null && targetUnitGUID != null)
+                    {
+                        uint language = (uint)Language.AddonBfA;
+                        WowGuid128 playerGuid = GetSession().GameState.CurrentPlayerGuid;
+                        ChatPkt chat = new ChatPkt(GetSession(), ChatMessageTypeModern.Addon, $"SMSG_SPELL_GO_AURA:{casterUnitGUID},{targetUnitGUID},{spell.Cast.SpellID}", language, playerGuid, "", playerGuid, "", "", ChatFlags.None, "HermesProxySMSG");
+                        SendPacketToClient(chat);
+                    }
+                }
             }
                 
             SendPacketToClient(spell);

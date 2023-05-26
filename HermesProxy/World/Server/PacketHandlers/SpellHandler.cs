@@ -124,21 +124,21 @@ namespace HermesProxy.World.Server
                 castRequest.SpellXSpellVisualId = cast.Cast.SpellXSpellVisualID;
                 castRequest.ClientGUID = cast.Cast.CastID;
                 
-                if (GetSession().GameState.CurrentClientSpecialCast != null)
+                if (GetSession().GameState.CurrentClientSpecialCast != null && GetSession().GameState.CurrentClientSpecialCast.SpellId == cast.Cast.SpellID)
                 {
+                    if(GameData.AutoRepeatSpells.Contains(cast.Cast.SpellID)) {
                     castRequest.ServerGUID = WowGuid128.Create(HighGuidType703.Cast, SpellCastSource.Normal, (uint)GetSession().GameState.CurrentMapId, cast.Cast.SpellID, 10000 + cast.Cast.CastID.GetCounter());
                     SendCastRequestFailed(castRequest, false);
                     return;
+                    }
                 }
                 else
                 {
                     castRequest.ServerGUID = WowGuid128.Create(HighGuidType703.Cast, SpellCastSource.Normal, (uint)GetSession().GameState.CurrentMapId, cast.Cast.SpellID, cast.Cast.SpellID + GetSession().GameState.CurrentPlayerGuid.GetCounter());
-
                     SpellPrepare prepare = new SpellPrepare();
                     prepare.ClientCastID = cast.Cast.CastID;
                     prepare.ServerCastID = castRequest.ServerGUID;
                     SendPacket(prepare);
-
                     GetSession().GameState.CurrentClientSpecialCast = castRequest;
                 } 
             }

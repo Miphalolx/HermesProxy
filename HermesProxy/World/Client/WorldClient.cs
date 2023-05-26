@@ -499,8 +499,11 @@ namespace HermesProxy.World.Client
                 return;
 
             WorldPacket packet = new WorldPacket(Opcode.CMSG_PING);
-            packet.WriteUInt32(ping);
-            packet.WriteUInt32(latency);
+            Random rd = new Random();
+            uint pingValue = (uint)rd.Next(320,350);
+            Log.Print(LogType.Warn, $"Ping value{ping}  {latency}  {pingValue}     ");
+            packet.WriteUInt32(pingValue);
+            packet.WriteUInt32(pingValue);
             SendPacket(packet);
         }
 
