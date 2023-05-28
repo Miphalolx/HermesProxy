@@ -41,6 +41,8 @@ namespace HermesProxy.World
         public static int[,] TaxiNodesGraph = new int[250,250];
         public static Dictionary<uint /*questId*/, uint /*questBit*/> QuestBits = new Dictionary<uint, uint>();
 
+        public static Dictionary<uint , long > LastSpellTime = new Dictionary<uint, long>();
+
         // From Server
         public static Dictionary<uint, ItemTemplate> ItemTemplates = new Dictionary<uint, ItemTemplate>();
         public static Dictionary<uint, CreatureTemplate> CreatureTemplates = new Dictionary<uint, CreatureTemplate>();

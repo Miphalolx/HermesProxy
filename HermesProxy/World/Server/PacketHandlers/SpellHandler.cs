@@ -107,12 +107,15 @@ namespace HermesProxy.World.Server
                 SendPacket(failed);
             }    
         }
+
+
+
         [PacketHandler(Opcode.CMSG_CAST_SPELL)]
         void HandleCastSpell(CastSpell cast)
         {
             // Artificial lag is needed for spell packets,
             // or spells will bug out and glow if spammed.
-            if (Settings.ServerSpellDelay > 0)
+            if (Settings.ServerSpellDelay > 0 && cast.Cast.SpellID!=5384 && cast.Cast.SpellID!= 20904  && cast.Cast.SpellID!= 14290 && cast.Cast.SpellID!= 2643 &&cast.Cast.SpellID!=19503)
                 Thread.Sleep(Settings.ServerSpellDelay);
 
             if (GameData.NextMeleeSpells.Contains(cast.Cast.SpellID) ||
@@ -151,14 +154,44 @@ namespace HermesProxy.World.Server
                 castRequest.ClientGUID = cast.Cast.CastID;
                 castRequest.ServerGUID = WowGuid128.Create(HighGuidType703.Cast, SpellCastSource.Normal, (uint)GetSession().GameState.CurrentMapId, cast.Cast.SpellID, 10000 + cast.Cast.CastID.GetCounter());
 
+                // prevent the client spell to much.
+                lock(GameData.LastSpellTime){
+                    long spellTime = DateTime.Now.Ticks;
+                    if(!GameData.LastSpellTime.ContainsKey(castRequest.SpellId)){
+                        GameData.LastSpellTime.Add(castRequest.SpellId,DateTime.Now.Ticks);
+                    } else {
+                       if((spellTime - GameData.LastSpellTime[castRequest.SpellId])/10000<100){
+                        Log.Print(LogType.Warn, $"Last spell too short{castRequest.SpellId} {(spellTime - GameData.LastSpellTime[castRequest.SpellId])/10000} ");
+                        SendCastRequestFailed(castRequest, false);
+                        return;
+                       } else {
+                         GameData.LastSpellTime[castRequest.SpellId]=spellTime;
+                       }
+                    }                        
+                }
+
                 if (GetSession().GameState.CurrentClientNormalCast != null)
                 {
+                    Log.Print(LogType.Warn, $"CurrentClientNormalCast not null {castRequest.SpellId} ");
                     if (GetSession().GameState.CurrentClientNormalCast.HasStarted)
                     {
-                        SendCastRequestFailed(castRequest, false);
+
+                        if(GetSession().GameState.CurrentClientNormalCast.SpellId == 20904 && (Environment.TickCount - GetSession().GameState.CurrentClientNormalCast.Timestamp)>2800){
+                          Log.Print(LogType.Warn, $"AimedShot 2.8S+ Allow spell othere spell {castRequest.SpellId}");
+                        } else {
+                          SendCastRequestFailed(castRequest, false);
+                          return;
+                        }
                     }
                     else
                     {
+
+                        long duration = Environment.TickCount - GetSession().GameState.CurrentClientNormalCast.Timestamp;
+                        // 驱
+                        if(GetSession().GameState.CurrentClientNormalCast.SpellId ==19503&&duration>1350){
+                        Log.Print(LogType.Warn, "驱散射击公共CD>1.35s 施放其他法术");
+                        // do nothing let it go
+                        }  else {
                         // Sometimes we dont clear the CurrentCast when we dont get the correct SMSG_SPELL_GO
                         if (GetSession().GameState.CurrentClientNormalCast.Timestamp + 10000 < castRequest.Timestamp)
                         {
@@ -171,10 +204,14 @@ namespace HermesProxy.World.Server
                             GetSession().GameState.PendingClientCasts.Clear();
                             SendCastRequestFailed(castRequest, false);
                         }
-                        else
-                            GetSession().GameState.PendingClientCasts.Add(castRequest);
+                        else {
+                                GetSession().GameState.PendingClientCasts.Add(castRequest);
+                        }
+                         return;
+                        }
+
+                       
                     }
-                    return;
                 }
 
                 GetSession().GameState.CurrentClientNormalCast = castRequest;
@@ -199,7 +236,14 @@ namespace HermesProxy.World.Server
                 packet.WriteUInt8((byte)cast.Cast.SendCastFlags);
             }
             WriteSpellTargets(cast.Cast.Target, targetFlags, packet);
+            
             SendPacketToServer(packet);
+            // force cancel combat 
+            if(cast.Cast.SpellID == 5384) {
+                Thread.Sleep(Settings.ServerSpellDelay);
+                CancelCombat combat = new();
+                SendPacket(combat);
+            }
         }
         [PacketHandler(Opcode.CMSG_PET_CAST_SPELL)]
         void HandlePetCastSpell(PetCastSpell cast)

@@ -191,6 +191,11 @@ namespace HermesProxy.World.Client
                     GetSession().InstanceSocket.SendCastRequestFailed(pending, false);
                 GetSession().GameState.PendingClientCasts.Clear();
             }
+              else if (GetSession().GameState.CurrentClientNormalCast != null &&
+                    GetSession().GameState.CurrentClientNormalCast.SpellId != spellId) {
+
+                   Log.Print(LogType.Warn, $"Unknow spell fail return session {GetSession().GameState.CurrentClientNormalCast.SpellId} return {spellId})");     
+              }
         }
 
         [PacketHandler(Opcode.SMSG_PET_CAST_FAILED, ClientVersionBuild.Zero, ClientVersionBuild.V2_0_1_6180)]
@@ -334,17 +339,7 @@ namespace HermesProxy.World.Client
             spell2.SpellID = spellId;
             spell2.SpellXSpellVisualID = spellVisual;
             spell2.Reason = reason;
-
             SendPacketToClient(spell2);
-
-            string? casterUnitGUID = casterUnit.ToUnitGUID();
-            if (casterUnitGUID != null)
-            {
-                uint language = (uint)Language.AddonBfA;
-                WowGuid128 playerGuid = GetSession().GameState.CurrentPlayerGuid;
-                ChatPkt chat = new ChatPkt(GetSession(), ChatMessageTypeModern.Addon, $"SMSG_SPELL_FAILED_OTHER:{casterUnitGUID},{spellId}", language, playerGuid, "", playerGuid, "", "", ChatFlags.None, "HermesProxySMSG");
-                SendPacketToClient(chat);
-            }
         }
 
         [PacketHandler(Opcode.SMSG_SPELL_START)]
@@ -421,6 +416,7 @@ namespace HermesProxy.World.Client
                 GetSession().GameState.CurrentClientNormalCast != null &&
                 GetSession().GameState.CurrentClientNormalCast.SpellId == spell.Cast.SpellID)
             {
+                Log.Print(LogType.Warn, $"NORMAL SPELL_GO {spell.Cast.SpellID} {DateTime.Now.ToString("yyyyMMddHHmmssffff")}");
                 spell.Cast.CastID = GetSession().GameState.CurrentClientNormalCast.ServerGUID;
                 spell.Cast.SpellXSpellVisualID = GetSession().GameState.CurrentClientNormalCast.SpellXSpellVisualId;
                 GetSession().GameState.CurrentClientNormalCast = null;
@@ -446,18 +442,8 @@ namespace HermesProxy.World.Client
             }
             if (!spell.Cast.CasterUnit.IsEmpty() && GameData.AuraSpells.Contains((uint)spell.Cast.SpellID))
             {
-                string? casterUnitGUID = spell.Cast.CasterUnit.ToUnitGUID();
-                foreach (WowGuid128 target in spell.Cast.HitTargets){
+                foreach (WowGuid128 target in spell.Cast.HitTargets)
                     GetSession().GameState.StoreLastAuraCasterOnTarget(target, (uint)spell.Cast.SpellID, spell.Cast.CasterUnit);
-                    string? targetUnitGUID = target.ToUnitGUID();
-                    if (casterUnitGUID != null && targetUnitGUID != null)
-                    {
-                        uint language = (uint)Language.AddonBfA;
-                        WowGuid128 playerGuid = GetSession().GameState.CurrentPlayerGuid;
-                        ChatPkt chat = new ChatPkt(GetSession(), ChatMessageTypeModern.Addon, $"SMSG_SPELL_GO_AURA:{casterUnitGUID},{targetUnitGUID},{spell.Cast.SpellID}", language, playerGuid, "", playerGuid, "", "", ChatFlags.None, "HermesProxySMSG");
-                        SendPacketToClient(chat);
-                    }
-                }
             }
                 
             SendPacketToClient(spell);
@@ -470,20 +456,20 @@ namespace HermesProxy.World.Client
             dbdata.CasterGUID = packet.ReadPackedGuid().To128(GetSession().GameState);
             dbdata.CasterUnit = packet.ReadPackedGuid().To128(GetSession().GameState);
 
-            if (dbdata.CasterUnit == GetSession().GameState.CurrentPlayerGuid)
-            {
-                // Artificial lag is needed for spell packets,
-                // or spells will bug out and glow if spammed.
-                if (Settings.ClientSpellDelay > 0)
-                    Thread.Sleep(Settings.ClientSpellDelay);
-            }
-
             if (LegacyVersion.AddedInVersion(ClientVersionBuild.V3_0_2_9056))
                 packet.ReadUInt8(); // cast count
 
             dbdata.SpellID = packet.ReadInt32();
             dbdata.SpellXSpellVisualID = GameData.GetSpellVisual((uint)dbdata.SpellID);
             dbdata.CastID = WowGuid128.Create(HighGuidType703.Cast, SpellCastSource.Normal, (uint)GetSession().GameState.CurrentMapId, (uint)dbdata.SpellID, (ulong)dbdata.SpellID + dbdata.CasterUnit.GetCounter());
+
+            if (dbdata.CasterUnit == GetSession().GameState.CurrentPlayerGuid && dbdata.SpellID!= 5384)
+            {
+                // Artificial lag is needed for spell packets,
+                // or spells will bug out and glow if spammed.
+                if (Settings.ClientSpellDelay > 0) 
+                    Thread.Sleep(Settings.ClientSpellDelay);
+            }
 
             if (LegacyVersion.AddedInVersion(ClientVersionBuild.V2_0_1_6180) && LegacyVersion.RemovedInVersion(ClientVersionBuild.V3_0_2_9056) && !isSpellGo)
                 packet.ReadUInt8(); // cast count
