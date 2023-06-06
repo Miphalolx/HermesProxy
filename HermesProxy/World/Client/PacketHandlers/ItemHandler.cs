@@ -134,12 +134,14 @@ namespace HermesProxy.World.Client
 
             SendPacketToClient(failure);
 
-            if (GetSession().GameState.CurrentClientNormalCast != null &&
-               !GetSession().GameState.CurrentClientNormalCast.HasStarted &&
-                GetSession().GameState.CurrentClientNormalCast.ItemGUID == failure.Item[0])
+            if (GetSession().GameState.CurrentClientNormalCastQueue.Count!=0 &&
+               !GetSession().GameState.CurrentClientNormalCastQueue.Peek().HasStarted &&
+                GetSession().GameState.CurrentClientNormalCastQueue.Peek().ItemGUID == failure.Item[0])
             {
-                GetSession().InstanceSocket.SendCastRequestFailed(GetSession().GameState.CurrentClientNormalCast, false);
-                GetSession().GameState.CurrentClientNormalCast = null;
+                GetSession().InstanceSocket.SendCastRequestFailed(GetSession().GameState.CurrentClientNormalCastQueue.Peek(), false);
+                lock(GetSession().GameState.CurrentClientNormalCastQueue){ 
+                    GetSession().GameState.CurrentClientNormalCastQueue.Dequeue();
+                }
             }
         }
         [PacketHandler(Opcode.SMSG_INVENTORY_CHANGE_FAILURE, ClientVersionBuild.V2_0_1_6180)]
@@ -173,12 +175,14 @@ namespace HermesProxy.World.Client
             }
             SendPacketToClient(failure);
 
-            if (GetSession().GameState.CurrentClientNormalCast != null &&
-               !GetSession().GameState.CurrentClientNormalCast.HasStarted &&
-                GetSession().GameState.CurrentClientNormalCast.ItemGUID == failure.Item[0])
+            if (GetSession().GameState.CurrentClientNormalCastQueue.Count>0 &&
+               !GetSession().GameState.CurrentClientNormalCastQueue.Peek().HasStarted &&
+                GetSession().GameState.CurrentClientNormalCastQueue.Peek().ItemGUID == failure.Item[0])
             {
-                GetSession().InstanceSocket.SendCastRequestFailed(GetSession().GameState.CurrentClientNormalCast, false);
-                GetSession().GameState.CurrentClientNormalCast = null;
+                GetSession().InstanceSocket.SendCastRequestFailed(GetSession().GameState.CurrentClientNormalCastQueue.Peek(), false);
+                lock(GetSession().GameState.CurrentClientNormalCastQueue){ 
+                    GetSession().GameState.CurrentClientNormalCastQueue.Dequeue();
+                }
             }
         }
         [PacketHandler(Opcode.SMSG_DURABILITY_DAMAGE_DEATH)]

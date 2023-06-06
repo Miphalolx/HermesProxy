@@ -5,6 +5,7 @@ using HermesProxy.World.Enums;
 using HermesProxy.World.Objects;
 using HermesProxy.World.Server;
 using System.Collections.Generic;
+using System.Collections;
 using System.Linq;
 using System.Text;
 using Framework.Realm;
@@ -82,8 +83,14 @@ namespace HermesProxy
         public uint LastWhoRequestId;
         public WowGuid128 CurrentPetGuid;
         public uint[] CurrentArenaTeamIds = new uint[3];
-        public ClientCastRequest CurrentClientNormalCast;  // regular spell casts
+
+        // public ClientCastRequest CurrentClientNormalCast;  // regular spell casts
+
+        public Queue<ClientCastRequest> CurrentClientNormalCastQueue = new(); 
+
         public ClientCastRequest CurrentClientSpecialCast; // next melee or auto repeat spells
+
+        public Queue<ClientCastRequest> CurrentClientSpecialCastQueue = new(); 
         public ClientCastRequest CurrentClientPetCast;
         public List<ClientCastRequest> PendingClientCasts = new List<ClientCastRequest>();
         public List<ClientCastRequest> PendingClientPetCasts = new List<ClientCastRequest>();
@@ -757,6 +764,7 @@ namespace HermesProxy
         public WowGuid128 ClientGUID;
         public WowGuid128 ServerGUID;
         public WowGuid128 ItemGUID;
+
     }
     public class ArenaTeamData
     {
