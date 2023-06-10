@@ -130,6 +130,7 @@ namespace HermesProxy.World.Client
         {
             // Artificial lag is needed for spell packets,
             // or spells will bug out and glow if spammed.
+            try{
             if (Settings.ClientSpellDelay > 0)
                 Thread.Sleep(Settings.ClientSpellDelay);
 
@@ -238,6 +239,9 @@ namespace HermesProxy.World.Client
                     Log.Print(LogType.Warn, $"receive Cast fail {spellId} but CurrentClientNormalCastQueue empty");     
                 }  
             }
+              } catch(Exception e){
+                Log.Print(LogType.Warn, $"{e.Message}");     
+             }
         }
 
         [PacketHandler(Opcode.SMSG_PET_CAST_FAILED, ClientVersionBuild.Zero, ClientVersionBuild.V2_0_1_6180)]
@@ -452,6 +456,10 @@ namespace HermesProxy.World.Client
             if (GetSession().GameState.CurrentMapId == null)
                 return;
 
+
+            try{
+
+
             SpellGo spell = new SpellGo();
             spell.Cast = HandleSpellStartOrGo(packet, true);
             lock(GetSession().GameState.CurrentClientNormalCastQueue){
@@ -512,6 +520,10 @@ namespace HermesProxy.World.Client
                     GetSession().GameState.StoreLastAuraCasterOnTarget(target, (uint)spell.Cast.SpellID, spell.Cast.CasterUnit);
             }}   
             SendPacketToClient(spell);
+
+            }catch(Exception e){
+                Log.Print(LogType.Warn, $"NORMAL SPELL_GO  error {e.Message} ");
+            }
         }
 
         SpellCastData HandleSpellStartOrGo(WorldPacket packet, bool isSpellGo)
