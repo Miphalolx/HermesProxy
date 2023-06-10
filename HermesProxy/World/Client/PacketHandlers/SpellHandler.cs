@@ -154,6 +154,8 @@ namespace HermesProxy.World.Client
                 arg1 = packet.ReadInt32();
             if (packet.CanRead())
                 arg2 = packet.ReadInt32();
+            
+
 
             if (GetSession().GameState.CurrentClientSpecialCast != null &&
                 GetSession().GameState.CurrentClientSpecialCast.SpellId == spellId)
@@ -174,7 +176,6 @@ namespace HermesProxy.World.Client
                 ClientCastRequest request = null;
                 lock(GetSession().GameState.CurrentClientNormalCastQueue){ 
                     request =  GetSession().GameState.CurrentClientNormalCastQueue.Dequeue();
-                 
                 }
                 
                 if (!request.HasStarted)
@@ -193,9 +194,6 @@ namespace HermesProxy.World.Client
                 failed.FailedArg1 = arg1;
                 failed.FailedArg2 = arg2;
                 SendPacketToClient(failed);
-                foreach (var pending in GetSession().GameState.PendingClientCasts)
-                    GetSession().InstanceSocket.SendCastRequestFailed(pending, false);
-                GetSession().GameState.PendingClientCasts.Clear();
             }
             else {
                 if(GetSession().GameState.CurrentClientNormalCastQueue.Count>0){
@@ -203,8 +201,9 @@ namespace HermesProxy.World.Client
 
                        List<ClientCastRequest> oldrequests = new List<ClientCastRequest>();
                        lock(GetSession().GameState.CurrentClientNormalCastQueue){
+                        Boolean done = false;
                         foreach(ClientCastRequest r in GetSession().GameState.CurrentClientNormalCastQueue){
-                            if(r.SpellId  != spellId) {
+                            if(r.SpellId  != spellId || done  == true) {
                                 oldrequests.Add(r);
                             } else {
                                 if (!r.HasStarted)
@@ -223,9 +222,7 @@ namespace HermesProxy.World.Client
                                 failed.FailedArg1 = arg1;
                                 failed.FailedArg2 = arg2;
                                 SendPacketToClient(failed);
-                                foreach (var pending in GetSession().GameState.PendingClientCasts)
-                                    GetSession().InstanceSocket.SendCastRequestFailed(pending, false);
-                                GetSession().GameState.PendingClientCasts.Clear();
+                                done = true;
                             }
                         }
                         GetSession().GameState.CurrentClientNormalCastQueue.Clear();
@@ -436,13 +433,7 @@ namespace HermesProxy.World.Client
 
             SendPacketToClient(spell);
 
-            if (failPending == 1)
-            {
-                foreach (var pending in GetSession().GameState.PendingClientCasts)
-                    GetSession().InstanceSocket.SendCastRequestFailed(pending, false);
-                GetSession().GameState.PendingClientCasts.Clear();
-            }
-            else if (failPending == 2)
+            if (failPending == 2)
             {
                 foreach (var pending in GetSession().GameState.PendingClientPetCasts)
                     GetSession().InstanceSocket.SendCastRequestFailed(pending, true);
@@ -456,9 +447,7 @@ namespace HermesProxy.World.Client
             if (GetSession().GameState.CurrentMapId == null)
                 return;
 
-
             try{
-
 
             SpellGo spell = new SpellGo();
             spell.Cast = HandleSpellStartOrGo(packet, true);
@@ -471,7 +460,6 @@ namespace HermesProxy.World.Client
                 Log.Print(LogType.Warn, $"SPELL_GO {spell.Cast.SpellID}");
                 spell.Cast.CastID = GetSession().GameState.CurrentClientSpecialCast.ServerGUID;
                 spell.Cast.SpellXSpellVisualID = GetSession().GameState.CurrentClientSpecialCast.SpellXSpellVisualId;
-
             }
             else if (GetSession().GameState.CurrentPetGuid == spell.Cast.CasterUnit &&
                      GetSession().GameState.CurrentClientPetCast != null &&
@@ -485,26 +473,28 @@ namespace HermesProxy.World.Client
               if (GetSession().GameState.CurrentPlayerGuid == spell.Cast.CasterUnit &&
                 GetSession().GameState.CurrentClientNormalCastQueue.Count>0 )
                 {
-                    if(GetSession().GameState.CurrentClientNormalCastQueue.Peek().SpellId == spell.Cast.SpellID) {
+
+                    ClientCastRequest CurrentClientNormalCast =   GetSession().GameState.CurrentClientNormalCastQueue.Peek();
+                    if(CurrentClientNormalCast.SpellId == spell.Cast.SpellID) {
                         Log.Print(LogType.Warn, $"NORMAL SPELL_GO {spell.Cast.SpellID} {DateTime.Now.ToString("yyyyMMddHHmmssffff")}");
-                        spell.Cast.CastID = GetSession().GameState.CurrentClientNormalCastQueue.Peek().ServerGUID;
-                        spell.Cast.SpellXSpellVisualID = GetSession().GameState.CurrentClientNormalCastQueue.Peek().SpellXSpellVisualId;
-                        
+                        spell.Cast.CastID = CurrentClientNormalCast.ServerGUID;
+                        spell.Cast.SpellXSpellVisualID = CurrentClientNormalCast.SpellXSpellVisualId;
                         GetSession().GameState.CurrentClientNormalCastQueue.Dequeue();
                     } else {
                        
                         List<ClientCastRequest> oldrequests = new List<ClientCastRequest>();
                         foreach(ClientCastRequest r in GetSession().GameState.CurrentClientNormalCastQueue){
-                            if(r.SpellId  != spell.Cast.SpellID) {
+                            bool found = false;
+                            if(r.SpellId != spell.Cast.SpellID||found) {
                                 oldrequests.Add(r);
+                                found = true;
                             } else {
-                             Log.Print(LogType.Warn, $"NORMAL SPELL_GO {spell.Cast.SpellID} {DateTime.Now.ToString("yyyyMMddHHmmssffff")}");
+                             found = true;
                              spell.Cast.CastID = r.ServerGUID;
                              spell.Cast.SpellXSpellVisualID = r.SpellXSpellVisualId;
                             }
                         }
                         GetSession().GameState.CurrentClientNormalCastQueue.Clear();
-
                         foreach(ClientCastRequest r in oldrequests){
                             GetSession().GameState.CurrentClientNormalCastQueue.Enqueue(r);
                         }

@@ -28,6 +28,8 @@ namespace Framework
         public static bool DebugOutput;
         public static bool PacketsLog;
         public static int ServerSpellDelay;
+
+        public static int MacroSpellDelay;
         public static int ClientSpellDelay;
 
         public static bool LoadAndVerifyFrom(ConfigurationParser config)
@@ -51,6 +53,7 @@ namespace Framework
             DebugOutput = config.GetBoolean("DebugOutput", false);
             PacketsLog = config.GetBoolean("PacketsLog", true);
             ServerSpellDelay = config.GetInt("ServerSpellDelay", 0);
+            MacroSpellDelay = config.GetInt("MacroSpellDelay", 100);
             ClientSpellDelay = config.GetInt("ClientSpellDelay", 0);
 
             return VerifyConfig();
@@ -109,6 +112,12 @@ namespace Framework
             if (ServerSpellDelay < 0)
             {
                 Log.Print(LogType.Server, "ServerSpellDelay must be larger than or equal to 0");
+                return false;
+            }
+
+            if (MacroSpellDelay < 0)
+            {
+                Log.Print(LogType.Server, "MacroSpellDelay must be larger than or equal to 0");
                 return false;
             }
 

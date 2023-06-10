@@ -92,7 +92,6 @@ namespace HermesProxy
 
         public Queue<ClientCastRequest> CurrentClientSpecialCastQueue = new(); 
         public ClientCastRequest CurrentClientPetCast;
-        public List<ClientCastRequest> PendingClientCasts = new List<ClientCastRequest>();
         public List<ClientCastRequest> PendingClientPetCasts = new List<ClientCastRequest>();
         public WowGuid64 LastLootTargetGuid;
         public List<int> ActionButtons = new();
