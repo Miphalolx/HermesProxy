@@ -43,6 +43,10 @@ namespace HermesProxy.World
 
         public static Dictionary<uint , long > LastSpellTime = new Dictionary<uint, long>();
 
+        public static Boolean StealthStatus = false;
+
+        public static Boolean ColdBloodStatus = false;
+
         // From Server
         public static Dictionary<uint, ItemTemplate> ItemTemplates = new Dictionary<uint, ItemTemplate>();
         public static Dictionary<uint, CreatureTemplate> CreatureTemplates = new Dictionary<uint, CreatureTemplate>();
@@ -1190,7 +1194,7 @@ namespace HermesProxy.World
             LoadCreatureDisplayInfoHotfixes();
             LoadCreatureDisplayInfoExtraHotfixes();
             LoadCreatureDisplayInfoOptionHotfixes();
-            LoadItemEffectHotfixes();
+            // LoadItemEffectHotfixes();
         }
         
         public static void LoadAreaTriggerHotfixes()

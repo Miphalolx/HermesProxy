@@ -324,8 +324,18 @@ namespace HermesProxy.World.Server
         {
             Opcode universalOpcode = packet.GetUniversalOpcode(isModern: true);
             var handler = GetHandler(universalOpcode);
-            if (handler != null)
-                handler.Invoke(this, packet);
+            if (handler != null){
+                try
+                {
+                    handler.Invoke(this, packet);    
+                }
+                catch (System.Exception)
+                {
+                    
+                    Log.PrintNet(LogType.Error, LogNetDir.C2P, $"No handler for opcode {universalOpcode} ({packet.GetOpcode()}) (Got Runtime exception)");
+                }
+                
+            }
             else
                 Log.PrintNet(LogType.Warn, LogNetDir.C2P, $"No handler for opcode {universalOpcode} ({packet.GetOpcode()}) (Got unknown packet from ModernClient)");
         }

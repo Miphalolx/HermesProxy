@@ -328,7 +328,7 @@ namespace HermesProxy.World.Client
         [PacketHandler(Opcode.SMSG_MOVE_SPLINE_START_SWIM)]
         [PacketHandler(Opcode.SMSG_MOVE_SPLINE_STOP_SWIM)]
         [PacketHandler(Opcode.SMSG_MOVE_SPLINE_SET_RUN_MODE)]
-        [PacketHandler(Opcode.SMSG_MOVE_SPLINE_SET_WALK_MODE)]
+        // [PacketHandler(Opcode.SMSG_MOVE_SPLINE_SET_WALK_MODE)]
         [PacketHandler(Opcode.SMSG_MOVE_SPLINE_SET_FLYING)]
         [PacketHandler(Opcode.SMSG_MOVE_SPLINE_UNSET_FLYING)]
         void HandleSplineMovementMessages(WorldPacket packet)

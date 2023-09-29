@@ -37,6 +37,12 @@ namespace HermesProxy.World.Client
             attack.VictimGUID = packet.ReadPackedGuid().To128(GetSession().GameState);
             attack.Damage = packet.ReadInt32();
             attack.OriginalDamage = attack.Damage;
+            if(GameData.StealthStatus == true) {
+                CooldownEvent cooldown = new();
+                cooldown.SpellID = 1787;
+                SendPacketToClient(cooldown);
+                GameData.StealthStatus = false;
+            }
 
             if (LegacyVersion.AddedInVersion(ClientVersionBuild.V3_0_3_9183))
                 attack.OverDamage = packet.ReadInt32();

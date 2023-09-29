@@ -155,6 +155,13 @@ namespace HermesProxy.World.Client
             if (packet.CanRead())
                 arg2 = packet.ReadInt32();
             
+             ClientCastRequest CurrentClientNormalCast = null;
+
+                lock(GetSession().GameState.CurrentClientNormalCastQueue){
+                    if(GetSession().GameState.CurrentClientNormalCastQueue.Count != 0){
+                        CurrentClientNormalCast = GetSession().GameState.CurrentClientNormalCastQueue.Peek();
+                    }
+                }
 
 
             if (GetSession().GameState.CurrentClientSpecialCast != null &&
@@ -170,8 +177,8 @@ namespace HermesProxy.World.Client
                 SendPacketToClient(failed);
                 GetSession().GameState.CurrentClientSpecialCast = null;
             }
-            else if (GetSession().GameState.CurrentClientNormalCastQueue.Count>0 &&
-                    GetSession().GameState.CurrentClientNormalCastQueue.Peek().SpellId == spellId)
+            else if (CurrentClientNormalCast!=null &&
+                    CurrentClientNormalCast.SpellId == spellId)
             {
                 ClientCastRequest request = null;
                 lock(GetSession().GameState.CurrentClientNormalCastQueue){ 
@@ -196,8 +203,8 @@ namespace HermesProxy.World.Client
                 SendPacketToClient(failed);
             }
             else {
-                if(GetSession().GameState.CurrentClientNormalCastQueue.Count>0){
-                    if(GetSession().GameState.CurrentClientNormalCastQueue.Peek().SpellId != spellId) {
+                if(CurrentClientNormalCast!=null){
+                    if(CurrentClientNormalCast.SpellId != spellId) {
 
                        List<ClientCastRequest> oldrequests = new List<ClientCastRequest>();
                        lock(GetSession().GameState.CurrentClientNormalCastQueue){
@@ -390,10 +397,9 @@ namespace HermesProxy.World.Client
         {
             if (GetSession().GameState.CurrentMapId == null)
                 return;
-
+            
             SpellStart spell = new SpellStart();
             spell.Cast = HandleSpellStartOrGo(packet, false);
-
             byte failPending = 0;
             if (GetSession().GameState.CurrentPlayerGuid == spell.Cast.CasterUnit &&
                 GetSession().GameState.CurrentClientNormalCastQueue.Count>0 &&
@@ -448,16 +454,23 @@ namespace HermesProxy.World.Client
                 return;
 
             try{
-
             SpellGo spell = new SpellGo();
             spell.Cast = HandleSpellStartOrGo(packet, true);
+
+            if(spell.Cast.SpellID == 1787 ) {
+                GameData.StealthStatus = true;
+            }
+
+            if(spell.Cast.SpellID == 14177 ) {
+                GameData.ColdBloodStatus = true;
+            }
+
             lock(GetSession().GameState.CurrentClientNormalCastQueue){
            if (GetSession().GameState.CurrentPlayerGuid == spell.Cast.CasterUnit &&
                 GetSession().GameState.CurrentClientSpecialCast != null &&
                 GetSession().GameState.CurrentClientSpecialCast.SpellId == spell.Cast.SpellID)
             {
                
-                Log.Print(LogType.Warn, $"SPELL_GO {spell.Cast.SpellID}");
                 spell.Cast.CastID = GetSession().GameState.CurrentClientSpecialCast.ServerGUID;
                 spell.Cast.SpellXSpellVisualID = GetSession().GameState.CurrentClientSpecialCast.SpellXSpellVisualId;
             }
@@ -469,14 +482,12 @@ namespace HermesProxy.World.Client
                 spell.Cast.SpellXSpellVisualID = GetSession().GameState.CurrentClientPetCast.SpellXSpellVisualId;
                 GetSession().GameState.CurrentClientPetCast = null;
             } else {
-              Log.Print(LogType.Warn, $"NORMAL SPELL_GO  received {spell.Cast.SpellID} ");
               if (GetSession().GameState.CurrentPlayerGuid == spell.Cast.CasterUnit &&
                 GetSession().GameState.CurrentClientNormalCastQueue.Count>0 )
                 {
 
                     ClientCastRequest CurrentClientNormalCast =   GetSession().GameState.CurrentClientNormalCastQueue.Peek();
                     if(CurrentClientNormalCast.SpellId == spell.Cast.SpellID) {
-                        Log.Print(LogType.Warn, $"NORMAL SPELL_GO {spell.Cast.SpellID} {DateTime.Now.ToString("yyyyMMddHHmmssffff")}");
                         spell.Cast.CastID = CurrentClientNormalCast.ServerGUID;
                         spell.Cast.SpellXSpellVisualID = CurrentClientNormalCast.SpellXSpellVisualId;
                         GetSession().GameState.CurrentClientNormalCastQueue.Dequeue();
@@ -506,9 +517,21 @@ namespace HermesProxy.World.Client
             }
             if (!spell.Cast.CasterUnit.IsEmpty() && GameData.AuraSpells.Contains((uint)spell.Cast.SpellID))
             {
+               string? casterUnitGUID = spell.Cast.CasterUnit.ToUnitGUID();
                 foreach (WowGuid128 target in spell.Cast.HitTargets)
+                {
                     GetSession().GameState.StoreLastAuraCasterOnTarget(target, (uint)spell.Cast.SpellID, spell.Cast.CasterUnit);
-            }}   
+                    string? targetUnitGUID = target.ToUnitGUID();
+                    if (casterUnitGUID != null && targetUnitGUID != null)
+                    {
+                        uint language = (uint)Language.AddonBfA;
+                        WowGuid128 playerGuid = GetSession().GameState.CurrentPlayerGuid;
+                        ChatPkt chat = new ChatPkt(GetSession(), ChatMessageTypeModern.Addon, $"SMSG_SPELL_GO_AURA:{casterUnitGUID},{targetUnitGUID},{spell.Cast.SpellID}", language, playerGuid, "", playerGuid, "", "", ChatFlags.None, "HermesProxySMSG");
+                        SendPacketToClient(chat);
+                    }
+                }
+            }
+            }   
             SendPacketToClient(spell);
 
             }catch(Exception e){
@@ -737,6 +760,7 @@ namespace HermesProxy.World.Client
                 {
                     SpellCooldownStruct cd = new();
                     cd.SpellID = packet.ReadUInt32();
+                    Log.Print(LogType.Warn, $"HandleSpellCooldown {cd.SpellID} {DateTime.Now.ToString("yyyyMMddHHmmssffff")}");
                     cd.ForcedCooldown = packet.ReadUInt32();
                     cooldown.SpellCooldowns.Add(cd);
                 }
@@ -760,6 +784,12 @@ namespace HermesProxy.World.Client
         {
             CooldownEvent cooldown = new();
             cooldown.SpellID = packet.ReadUInt32();
+            if(cooldown.SpellID == 1787) {
+                GameData.StealthStatus = false;
+            }
+            if(cooldown.SpellID == 14177) {
+                GameData.ColdBloodStatus = false;
+            }
             WowGuid guid = packet.ReadGuid();
             cooldown.IsPet = guid.GetHighType() == HighGuidType.Pet;
             SendPacketToClient(cooldown);
@@ -786,6 +816,7 @@ namespace HermesProxy.World.Client
         [PacketHandler(Opcode.SMSG_SPELL_NON_MELEE_DAMAGE_LOG)]
         void HandleSpellNonMeleeDamageLog(WorldPacket packet)
         {
+            
             SpellNonMeleeDamageLog spell = new();
             spell.TargetGUID = packet.ReadPackedGuid().To128(GetSession().GameState);
             spell.CasterGUID = packet.ReadPackedGuid().To128(GetSession().GameState);

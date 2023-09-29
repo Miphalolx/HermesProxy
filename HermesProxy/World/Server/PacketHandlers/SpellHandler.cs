@@ -314,6 +314,17 @@ namespace HermesProxy.World.Server
 
             ClientCastRequest CurrentClientNormalCast = null;
 
+             if (GameData.MountAuras.Contains(use.Cast.SpellID))
+             {
+               if(GameData.StealthStatus == true) {
+                    CooldownEvent cooldown = new();
+                    cooldown.SpellID = 1787;
+                    Log.Print(LogType.Warn, $"Manual force reset StealthStatus");
+                    GameData.StealthStatus = false;
+                    SendPacket(cooldown);
+                }
+             }
+
                 lock(GetSession().GameState.CurrentClientNormalCastQueue){
                     if(GetSession().GameState.CurrentClientNormalCastQueue.Count != 0){
                         CurrentClientNormalCast = GetSession().GameState.CurrentClientNormalCastQueue.Peek();
@@ -463,6 +474,21 @@ namespace HermesProxy.World.Server
         {
             WorldPacket packet = new WorldPacket(Opcode.CMSG_CANCEL_AURA);
             packet.WriteUInt32(aura.SpellID);
+            // 潜行
+            if(aura.SpellID ==1787 && GameData.StealthStatus == true) {
+                CooldownEvent cooldown = new();
+                cooldown.SpellID = aura.SpellID;
+                Log.Print(LogType.Warn, $"Manual force reset StealthStatus");
+                SendPacket(cooldown);
+            }
+            // 冷血
+            if(aura.SpellID ==14177 && GameData.ColdBloodStatus == true) {
+                CooldownEvent cooldown = new();
+                cooldown.SpellID = aura.SpellID;
+                Log.Print(LogType.Warn, $"Manual force reset StealthStatus");
+                SendPacket(cooldown);
+            }
+
             SendPacketToServer(packet);
         }
         [PacketHandler(Opcode.CMSG_CANCEL_MOUNT_AURA)]
