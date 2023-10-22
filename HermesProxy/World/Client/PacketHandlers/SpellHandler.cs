@@ -798,11 +798,13 @@ namespace HermesProxy.World.Client
         [PacketHandler(Opcode.SMSG_CLEAR_COOLDOWN)]
         void HandleClearCooldown(WorldPacket packet)
         {
+            
             ClearCooldown cooldown = new();
             cooldown.SpellID = packet.ReadUInt32();
             WowGuid guid = packet.ReadGuid();
             cooldown.IsPet = guid.GetHighType() == HighGuidType.Pet;
             SendPacketToClient(cooldown);
+            Log.Print(LogType.Warn, $"clear cd {cooldown.SpellID}");
         }
 
         [PacketHandler(Opcode.SMSG_COOLDOWN_CHEAT)]

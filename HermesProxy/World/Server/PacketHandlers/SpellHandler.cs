@@ -324,6 +324,7 @@ namespace HermesProxy.World.Server
                     SendPacket(cooldown);
                 }
              }
+          
 
                 lock(GetSession().GameState.CurrentClientNormalCastQueue){
                     if(GetSession().GameState.CurrentClientNormalCastQueue.Count != 0){
@@ -405,6 +406,18 @@ namespace HermesProxy.World.Server
             SpellCastTargetFlags targetFlags = ConvertSpellTargetFlags(use.Cast.Target);
             WriteSpellTargets(use.Cast.Target, targetFlags, packet);
             SendPacketToServer(packet);
+
+            //   // 增加了小鸡、火箭靴、自由的CD
+            // if(use.Cast.SpellID == 8892 ||use.Cast.SpellID == 5024||use.Cast.SpellID == 6615){
+
+            //     Thread.Sleep(1500);
+            //     ItemCooldown item = new ItemCooldown();
+            //     item.ItemGuid = use.CastItem;
+            //     item.SpellID = use.Cast.SpellID;
+            //     item.Cooldown = 300000;
+            //     SendPacket(item);
+            //     Log.Print(LogType.Error, $"HandleItemCooldown  {item.SpellID}   and  guid {item.ItemGuid}" );
+            // }
 
         }
         [PacketHandler(Opcode.CMSG_CANCEL_CAST)]

@@ -504,6 +504,8 @@ namespace HermesProxy.World.Client
             Log.Print(LogType.Warn, $"Ping value{ping}  {latency}  {pingValue}     ");
             packet.WriteUInt32(pingValue);
             packet.WriteUInt32(pingValue);
+            // packet.WriteUInt32(ping);
+            // packet.WriteUInt32(latency);
             SendPacket(packet);
         }
 
