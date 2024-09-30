@@ -127,7 +127,7 @@ namespace HermesProxy.World.Server
                 castRequest.SpellId = cast.Cast.SpellID;
                 castRequest.SpellXSpellVisualId = cast.Cast.SpellXSpellVisualID;
                 castRequest.ClientGUID = cast.Cast.CastID;
-                
+                Log.Print(LogType.Warn, $"Auto shoot spell fired.");
                 if (GetSession().GameState.CurrentClientSpecialCast != null && GetSession().GameState.CurrentClientSpecialCast.SpellId == cast.Cast.SpellID)
                 {
                     if(GameData.AutoRepeatSpells.Contains(cast.Cast.SpellID)) {
@@ -138,12 +138,28 @@ namespace HermesProxy.World.Server
                 }
                 else
                 {
+                    lock(GameData.LastSpecialSpellTime){
+                    long spellTime = DateTime.Now.Ticks;
+                        if(!GameData.LastSpecialSpellTime.ContainsKey(castRequest.SpellId)){
+                            GameData.LastSpecialSpellTime.Add(castRequest.SpellId,DateTime.Now.Ticks);
+                        } else {
+                        if((spellTime - GameData.LastSpecialSpellTime[castRequest.SpellId])/10000<50){
+                            Log.Print(LogType.Warn, $"Last Special spell too short{castRequest.SpellId} {(spellTime - GameData.LastSpecialSpellTime[castRequest.SpellId])/10000} ");
+                            SendCastRequestFailed(castRequest, false);
+                            return;
+                        } else {
+                            GameData.LastSpecialSpellTime[castRequest.SpellId]=spellTime;
+                        }
+                        }                        
+                    }
+                    
+                    GetSession().GameState.CurrentClientSpecialCast = castRequest;
                     castRequest.ServerGUID = WowGuid128.Create(HighGuidType703.Cast, SpellCastSource.Normal, (uint)GetSession().GameState.CurrentMapId, cast.Cast.SpellID, cast.Cast.SpellID + GetSession().GameState.CurrentPlayerGuid.GetCounter());
                     SpellPrepare prepare = new SpellPrepare();
                     prepare.ClientCastID = cast.Cast.CastID;
                     prepare.ServerCastID = castRequest.ServerGUID;
                     SendPacket(prepare);
-                    GetSession().GameState.CurrentClientSpecialCast = castRequest;
+                  
                 } 
             }
             else
@@ -161,7 +177,11 @@ namespace HermesProxy.World.Server
                     if(!GameData.LastSpellTime.ContainsKey(castRequest.SpellId)){
                         GameData.LastSpellTime.Add(castRequest.SpellId,DateTime.Now.Ticks);
                     } else {
-                       if((spellTime - GameData.LastSpellTime[castRequest.SpellId])/10000<100){
+                       int interval = 100;
+                       if(castRequest.SpellId==14290) {
+                         interval = 500;
+                       }
+                       if((spellTime - GameData.LastSpellTime[castRequest.SpellId])/10000<interval){
                         Log.Print(LogType.Warn, $"Last spell too short{castRequest.SpellId} {(spellTime - GameData.LastSpellTime[castRequest.SpellId])/10000} ");
                         SendCastRequestFailed(castRequest, false);
                         return;
@@ -406,19 +426,6 @@ namespace HermesProxy.World.Server
             SpellCastTargetFlags targetFlags = ConvertSpellTargetFlags(use.Cast.Target);
             WriteSpellTargets(use.Cast.Target, targetFlags, packet);
             SendPacketToServer(packet);
-
-            //   // 增加了小鸡、火箭靴、自由的CD
-            // if(use.Cast.SpellID == 8892 ||use.Cast.SpellID == 5024||use.Cast.SpellID == 6615){
-
-            //     Thread.Sleep(1500);
-            //     ItemCooldown item = new ItemCooldown();
-            //     item.ItemGuid = use.CastItem;
-            //     item.SpellID = use.Cast.SpellID;
-            //     item.Cooldown = 300000;
-            //     SendPacket(item);
-            //     Log.Print(LogType.Error, $"HandleItemCooldown  {item.SpellID}   and  guid {item.ItemGuid}" );
-            // }
-
         }
         [PacketHandler(Opcode.CMSG_CANCEL_CAST)]
         void HandleCancelCast(CancelCast cast)

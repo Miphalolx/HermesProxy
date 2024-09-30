@@ -4,8 +4,11 @@ using HermesProxy.World.Enums;
 using HermesProxy.World.Objects;
 using HermesProxy.World.Server.Packets;
 using System;
+using System.Net;
 using System.Collections.Generic;
+using HermesProxy.Configuration;
 using static HermesProxy.World.Server.Packets.PVPMatchStatisticsMessage;
+using Framework;
 
 namespace HermesProxy.World.Client
 {
@@ -115,6 +118,13 @@ namespace HermesProxy.World.Client
                         confirm.Mapid = mapId;
                         confirm.Timeout = packet.ReadUInt32();
                         SendPacketToClient(confirm);
+                        try{
+                            if(Settings.SendMessageAppToken != null && Settings.SendMessageUid != null) {
+                                HttpWebRequest request = (HttpWebRequest)WebRequest.Create($"https://wxpusher.zjiecode.com/api/send/message/?appToken={Settings.SendMessageAppToken}&content={"准备战斗:"+confirm.Timeout}&uid={Settings.SendMessageUid}&url=http%3a%2f%2fwxpusher.zjiecode.com");
+                                request.GetResponse();
+                            }
+                        } catch(Exception e){}
+                 
                         break;
                     }
                     case BattleGroundStatus.InProgress:

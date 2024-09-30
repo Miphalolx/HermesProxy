@@ -452,7 +452,7 @@ namespace HermesProxy.World.Client
         {
             if (GetSession().GameState.CurrentMapId == null)
                 return;
-
+                
             try{
             SpellGo spell = new SpellGo();
             spell.Cast = HandleSpellStartOrGo(packet, true);
@@ -533,7 +533,7 @@ namespace HermesProxy.World.Client
             }
             }   
             SendPacketToClient(spell);
-
+            
             }catch(Exception e){
                 Log.Print(LogType.Warn, $"NORMAL SPELL_GO  error {e.Message} ");
             }
@@ -775,6 +775,7 @@ namespace HermesProxy.World.Client
                 cooldown.Caster = packet.ReadPackedGuid().To128(GetSession().GameState);
                 cd.ForcedCooldown = packet.ReadUInt32();
                 cooldown.SpellCooldowns.Add(cd);
+                Log.Print(LogType.Warn, $"HandleSpellCooldown {cd.SpellID} {cooldown.Caster}");
             }
             SendPacketToClient(cooldown);
         }
@@ -790,6 +791,7 @@ namespace HermesProxy.World.Client
             if(cooldown.SpellID == 14177) {
                 GameData.ColdBloodStatus = false;
             }
+            Log.Print(LogType.Warn, $"HandleCooldownEvent cd {cooldown.SpellID}");
             WowGuid guid = packet.ReadGuid();
             cooldown.IsPet = guid.GetHighType() == HighGuidType.Pet;
             SendPacketToClient(cooldown);
@@ -812,6 +814,7 @@ namespace HermesProxy.World.Client
         {
             CooldownCheat cooldown = new();
             cooldown.Guid = packet.ReadGuid().To128(GetSession().GameState);
+            Log.Print(LogType.Error, $"HandleCooldownCheat  {cooldown.Guid} " );
             SendPacketToClient(cooldown);
         }
 

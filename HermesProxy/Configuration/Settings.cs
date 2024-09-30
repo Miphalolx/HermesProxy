@@ -31,6 +31,9 @@ namespace Framework
 
         public static int MacroSpellDelay;
         public static int ClientSpellDelay;
+        public static String SendMessageAppToken;
+
+        public static String SendMessageUid;
 
         public static bool LoadAndVerifyFrom(ConfigurationParser config)
         {
@@ -55,7 +58,8 @@ namespace Framework
             ServerSpellDelay = config.GetInt("ServerSpellDelay", 0);
             MacroSpellDelay = config.GetInt("MacroSpellDelay", 100);
             ClientSpellDelay = config.GetInt("ClientSpellDelay", 0);
-
+            SendMessageAppToken = config.GetString("SendMessageAppToken", null);
+            SendMessageUid = config.GetString("SendMessageUid", null);
             return VerifyConfig();
         }
         

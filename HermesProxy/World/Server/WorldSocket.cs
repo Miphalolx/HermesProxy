@@ -296,7 +296,6 @@ namespace HermesProxy.World.Server
                         GetSession().ModernSniff.CloseFile();
                         GetSession().ModernSniff = null;
                     }
-
                     break;
                 case Opcode.CMSG_ENABLE_NAGLE:
                     SetNoDelay(false);

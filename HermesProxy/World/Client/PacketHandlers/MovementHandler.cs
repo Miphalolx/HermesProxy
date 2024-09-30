@@ -28,7 +28,7 @@ namespace HermesProxy.World.Client
         [PacketHandler(Opcode.MSG_MOVE_START_PITCH_DOWN)]
         [PacketHandler(Opcode.MSG_MOVE_STOP_PITCH)]
         [PacketHandler(Opcode.MSG_MOVE_SET_RUN_MODE)]
-        [PacketHandler(Opcode.MSG_MOVE_SET_WALK_MODE)]
+        // [PacketHandler(Opcode.MSG_MOVE_SET_WALK_MODE)]
         [PacketHandler(Opcode.MSG_MOVE_TELEPORT)]
         [PacketHandler(Opcode.MSG_MOVE_SET_FACING)]
         [PacketHandler(Opcode.MSG_MOVE_SET_PITCH)]

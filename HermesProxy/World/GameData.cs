@@ -52,6 +52,8 @@ namespace HermesProxy.World
 
         public static Dictionary<uint , long > LastSpellTime = new Dictionary<uint, long>();
 
+        public static Dictionary<uint , long > LastSpecialSpellTime = new Dictionary<uint, long>();
+
         public static Boolean StealthStatus = false;
 
         public static Boolean ColdBloodStatus = false;
